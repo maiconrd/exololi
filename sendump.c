@@ -104,11 +104,7 @@ int canSend(char* code){
 		return 1;
 	}
 	addr.can_ifindex = ifr.ifr_ifindex;
-
-	/* disable default receive filter on this RAW socket */
-	/* This is obsolete as we do not read from the socket at all, but for */
-	/* this reason we can remove the receive list in the Kernel to save a */
-	/* little (really a very little!) CPU usage.                          */
+	
 	setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
 
 	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -225,12 +221,11 @@ void PDOconfig(){
 }
 
 void goToPosition(unsigned int angled){
-
+	/*receives a position in quad counts (qc)*/
 	unsigned char p1 = angled & 0xFF; 
     unsigned char p2 = (angled >> 8) & 0xFF;
     unsigned char p3 = (angled >> 16) & 0xFF;
     unsigned char p4 = (angled >> 24) & 0xFF;
-
     /*
   	if angled = 0xDEADBEEF, then:
   	setpoint_position[4] = EF
@@ -238,50 +233,34 @@ void goToPosition(unsigned int angled){
   	setpoint_position[6] = AD
   	setpoint_position[7] = DE
   	*/
-
     char *pos;
     pos = malloc(sizeof(p1)); ///segmentation fault: core damped SOLVED
-    sprintf(pos, "%02X", p1);
-    //printf("%s\n", pos);
-    
+    sprintf(pos, "%02X", p1);    
     char *init = "22622000";
-    unsigned char *data;
-    
+    unsigned char *data;    
     data = malloc(16); 
     strcpy(data, init); 
     strcat(data, pos);
-
     sprintf(pos, "%02X", p2);
     strcat(data, pos);
-    //printf("%s\n", pos);
-
     sprintf(pos, "%02X", p3);
     strcat(data, pos);
-    //printf("%s\n", pos);
-
     sprintf(pos, "%02X", p4);
     strcat(data, pos);
-    //printf("%s\n", pos);
-    
-    //printf("%s\n", data);
-
-    //usleep(5000000);
-
     unsigned char* msg;
-
     buildMsg(&data, &msg);
 	canSend(msg);
-
 	free(data);
 	free(pos);
 }
-
+//global variables to current values
 int position = -1;
 int velocity = 0;
 int current = 0;
 
 void deCode(struct can_frame frame){
-	int data;
+	/*decode the CAN frame received*/
+	int data; // value 
 	data = frame.data[7];
     data <<=8;    
     data = data | frame.data[6];
@@ -290,7 +269,7 @@ void deCode(struct can_frame frame){
     data <<=8;
     data = data | frame.data[4];
 
-    int code;
+    int code; // information
 	code = frame.data[3];
     code <<=8;    
     code = code | frame.data[2];
@@ -310,17 +289,16 @@ void deCode(struct can_frame frame){
     }
 }
 
-int main(int argc, char **argv){	
+int main(int argc, char **argv){
+	//config and variables to read
 	fd_set rdfs;
 	int s;
 	struct ifreq ifr;
 	struct sockaddr_can addr;
-	struct can_frame frame;
-		
+	struct can_frame frame;		
 	memset(&ifr, 0x0, sizeof(ifr));
 	memset(&addr, 0x0, sizeof(addr));
-	memset(&frame, 0x0, sizeof(frame));
-	
+	memset(&frame, 0x0, sizeof(frame));	
 	// open CAN_RAW socket 
 	s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	// convert interface sting "can0" into interface index 
@@ -331,47 +309,40 @@ int main(int argc, char **argv){
 	addr.can_family = AF_CAN;
 	// bind socket to the can0 interface 
 	bind(s, (struct sockaddr *)&addr, sizeof(addr));	
-
+	
+	//EPOS2 initialization
 	doStart();
 	PDOconfig();		
-
+	//messages to require EPOS2 data 
 	unsigned char *getPos;
 	buildMsg(&get_actual_position, &getPos);
-
 	unsigned char *getVel;
 	buildMsg(&get_actual_velocity, &getVel);
-
 	unsigned char *getCur;
 	buildMsg(&get_actual_current, &getCur);
-
+	//position to go
 	unsigned int moveTo;
-
 	if(argc == 2){
 		char *p = argv[1];
-		moveTo = atoi(p);
+		moveTo = atoi(p); 
 	}else{
-		moveTo = 16000;
+		moveTo = 16000; 
 	}	
-	
-	usleep(5000000); //wait 5 senconds
+	//wait 5 seconds
+	usleep(5000000); 
 
 	struct timeval tv;
-    int rc;
-    
-    int flag = 0;
+    int rc;   
 
 	while (running) {
 		FD_ZERO(&rdfs);		
 		FD_SET(s, &rdfs);
-
 		tv.tv_sec = 0;
 	    tv.tv_usec = 1000; // 1000 microseconds -> 1kHz 
-
 	    rc = select(s+1, &rdfs, NULL, NULL, &tv);
-
 	    // rc == 0 - timeout
 	    if (!rc) {
-	         // write your CAN frame	    	
+	        // write 	    	
 	        canSend(getPos);
 	        canSend(getVel);
 	        canSend(getCur);	
@@ -383,14 +354,16 @@ int main(int argc, char **argv){
 	    		running = 0;
 	    	}	
 	    }
-		if (FD_ISSET(s, &rdfs)) {							
-				read(s, &frame, sizeof(frame));
-				//fprint_long_canframe(stdout, &frame, NULL, 0);				
-				//printf("\n");			
-				if(frame.can_id == 0x581){
-					deCode(frame);					
-				}
+		if (FD_ISSET(s, &rdfs)) {	
+			// read						
+			read(s, &frame, sizeof(frame));
+			//fprint_long_canframe(stdout, &frame, NULL, 0);				
+			//printf("\n");	
+			// check and do something		
+			if(frame.can_id == 0x581){
+				deCode(frame);					
 			}
+		}
 		out_fflush:
 			fflush(stdout);
 	}
