@@ -26,6 +26,7 @@ sudo /sbin/ip link set can0 up type can bitrate 1000000
 5. Compiling the code:
 
 gcc -c sendump.c
+
 gcc -o sendump lib.o sendump.o
 
 6. Running the code:
