@@ -3,18 +3,25 @@
 1. Objective: Establish communication (read and write) in a CAN bus in order to control a Maxon EC90 motor via EPOS2 driver using a Raspberry Pi 3B+ and a PiCAN2 hat.
 
 2. The sendump.c was written based in the linux-can-utils examples (http://www.skpang.co.uk/dl/can-test_pi2.zip) and the socketCAN documentation (https://www.kernel.org/doc/Documentation/networking/can.txt). This code implements:
+
 -EPOS2 configuration: Start Up and PDO Config.
--Sends a position set point in qc (quadrant counts).
+
+-Sends a position set point in qc (quad counts).
+
 -Requests, reads and print in the terminal the current position, velocity and electrical current.
 
 3. Using the PiCAN2 requires this in RPi SO: (more info in: http://skpang.co.uk/catalog/images/raspberrypi/pi_2/PICAN2UG13.pdf)
 
 Add the overlays by: 
+
 sudo nano /boot/config.txt
 
 Add these 3 lines to the end of file: (here it is a little different, note the missing "overlay" in the 3th line)
+
 dtparam=spi=on
+
 dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25
+
 dtoverlay=spi-bcm2835
 
 4. It is always necessary bring up the CAN interface once after SO start, then:
