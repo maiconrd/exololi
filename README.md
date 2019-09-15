@@ -6,7 +6,7 @@
 
 -EPOS2 configuration: Start Up and PDO Config.
 
--Sends a position set point in qc (quadrant counts).
+-Sends a position set point in qc (quad counts).
 
 -Requests, reads and print in the terminal the current position, velocity and electrical current.
 
