@@ -79,145 +79,117 @@ unsigned char *get_actual_velocity = "406C600000000000";
 unsigned char *get_actual_current =  "4078600000000000";
 
 int canSend(char* code){	
-	int s; /* can raw socket */ 
+	/* sends a CAN message, code must be like "601#DEADBEEF",
+	   where 601 is the address and DEADBEEF is a hexa value */
+	int s; 
 	int nbytes;
 	struct sockaddr_can addr;
 	struct can_frame frame;
 	struct ifreq ifr;
-
 	if (parse_canframe(code, &frame)){
 		printf("nope\n");		
 		return 1;
 	}
-
-	/* open socket */
+	// open socket 
 	if ((s = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0) {
 		perror("socket");
 		return 1;
 	}	
-
 	addr.can_family = AF_CAN;
-
 	strcpy(ifr.ifr_name, "can0");
 	if (ioctl(s, SIOCGIFINDEX, &ifr) < 0) {
 		perror("SIOCGIFINDEX");
 		return 1;
 	}
-	addr.can_ifindex = ifr.ifr_ifindex;
-	
+	addr.can_ifindex = ifr.ifr_ifindex;	
 	setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
-
 	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("bind");
 		return 1;
 	}
-
-	/* send frame */
+	// send frame 
 	if ((nbytes = write(s, &frame, sizeof(frame))) != sizeof(frame)) {
 		perror("write");
 		return 1;
 	}
-
 	//fprint_long_canframe(stdout, &frame, "\n", 0);
-
 	close(s);
 	return 0;
 }
 
 void buildMsg(unsigned char **data, unsigned char **msg){
-	//unsigned char *slave = "123#";
+	/* concatenates the EPOS2 address to the data to send.
+	   the message format is a char like "601#DEADBEEF" */	
 	*msg = malloc(strlen(slaveAdress)+1+strlen(*data)); 
 	strcpy(*msg, slaveAdress); 
 	strcat(*msg, *data); 	
 }
-
 //********************
 // EPOS COMMUNICATION
 //********************
-
 void doStart(){
-
 	unsigned char* msg;
-
 	buildMsg(&disable_epos, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&enable_epos, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&set_max_following_error, &msg);
 	canSend(msg);	
 	usleep(10000);
-
 	buildMsg(&set_max_acceleration, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&set_max_profile_velocity, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&set_min_position_limit, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&set_max_position_limit, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	free(msg);
 }
 
-void PDOconfig(){
-
+void PDOconfig(){	
 	unsigned char* msg;
-
 	buildMsg(&set_preoperational, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&pdo_actual_position_1, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&pdo_actual_position_2, &msg);
 	canSend(msg);
 	usleep(10000);	
 	/*
 	buildMsg(&pdo_actual_velocity_1, &msg);
 	canSend(msg);
-
+	usleep(10000);
 	buildMsg(&pdo_actual_velocity_2, &msg);
 	canSend(msg);
 	*/
 	buildMsg(&pdo_actual_current_1, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&pdo_actual_current_2, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&pdo_actual_current_3, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&pdo_actual_current_4, &msg);
 	canSend(msg);
 	usleep(10000);
-
 	buildMsg(&pdo_actual_current_5, &msg);
 	canSend(msg);
 	usleep(10000);
-
-	buildMsg(&set_operational, &msg); /// no ModExo.h é 0x00 (= broadcast (eu acho))
+	buildMsg(&set_operational, &msg); 
 	canSend(msg);
 	usleep(10000);
-
 	free(msg);
-
 }
 
 void goToPosition(unsigned int angled){
