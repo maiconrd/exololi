@@ -16,7 +16,7 @@ Add the overlays by:
 
 sudo nano /boot/config.txt
 
-Add these 3 lines to the end of file: (here it is a little different, note the missing "overlay" in the 3th line)
+Add these 3 lines to the end of file: (here it is a little different, note the missing "overlay" in the 3rd line)
 
 dtparam=spi=on
 
